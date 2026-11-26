@@ -38,13 +38,21 @@ body{
   user-select:none;-webkit-user-select:none;
 }
 canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
-#sky{z-index:0}
+#photo{position:fixed;inset:0;z-index:0;background:#07060f url(marina.jpg) 50% 30% / cover no-repeat}
 #city{z-index:1}
-#fx{z-index:2}
+#grade{position:fixed;inset:0;z-index:2;pointer-events:none}
+#sky{z-index:3}
+#grade::before,#grade::after{content:'';position:absolute;inset:0}
+/* colour grade: keeps the photo in the page's violet / rose palette, and darkens top & bottom for the text */
+#grade::before{background:linear-gradient(180deg,#4a1f8a 0%,#6a2a8a 40%,#c04a7a 64%,#3a1458 100%);mix-blend-mode:color;opacity:.32}
+#grade::after{background:linear-gradient(180deg,rgba(8,5,18,.5) 0%,rgba(8,5,18,.12) 28%,rgba(8,5,18,0) 50%,rgba(8,5,18,.1) 72%,rgba(8,5,18,.55) 100%)}#fx{z-index:4}
+#credit{position:fixed;left:12px;bottom:10px;z-index:10;font:400 8.5px var(--mono);letter-spacing:.08em;color:var(--muted);opacity:.45;text-decoration:none}
+#credit:hover{opacity:.9}
+@media (max-width:640px){#credit{left:50%;transform:translateX(-50%);bottom:34px;white-space:nowrap}}
 #skyinfo{position:fixed;top:16px;left:16px;z-index:10;font:400 9.5px/1.75 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--muted);opacity:.7;pointer-events:none;text-align:left}
 #skyinfo b{color:var(--gold);font-weight:500}
-.vignette{position:fixed;inset:0;z-index:3;pointer-events:none;background:radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,.6) 100%)}
-.grain{position:fixed;inset:-50%;z-index:3;pointer-events:none;opacity:.06;
+.vignette{position:fixed;inset:0;z-index:5;pointer-events:none;background:radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,.6) 100%)}
+.grain{position:fixed;inset:-50%;z-index:5;pointer-events:none;opacity:.06;
   background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
   animation:grain 1.4s steps(6) infinite}
 @keyframes grain{0%{transform:translate(0,0)}20%{transform:translate(-3%,2%)}40%{transform:translate(2%,-3%)}60%{transform:translate(-2%,-1%)}80%{transform:translate(3%,3%)}100%{transform:translate(0,0)}}
@@ -56,7 +64,7 @@ html.shake .scene.active, html.shake #fx{animation:shake .55s cubic-bezier(.36,.
 @keyframes shake{10%,90%{transform:translate(-1px,1px)}20%,80%{transform:translate(3px,-2px)}30%,50%,70%{transform:translate(-5px,2px)}40%,60%{transform:translate(5px,-1px)}}
 
 /* ---------- scenes ---------- */
-.scene{position:fixed;inset:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+.scene{position:fixed;inset:0;z-index:6;display:flex;flex-direction:column;align-items:center;justify-content:space-between;
   padding:max(6vh,28px) 16px max(8vh,56px);text-align:center;
   opacity:0;visibility:hidden;pointer-events:none;
   transition:opacity .8s ease, visibility 0s linear .8s}
@@ -277,8 +285,10 @@ h2{font-weight:400;font-style:italic;font-size:clamp(28px,5.2vw,54px);line-heigh
 </style>
 </head>
 <body>
+<div id="photo" role="img" aria-label="Dubai Marina at night"></div>
 <canvas id="sky" aria-hidden="true"></canvas>
 <canvas id="city" aria-hidden="true"></canvas>
+<div id="grade"></div>
 <canvas id="fx" aria-hidden="true"></canvas>
 <div id="skyinfo"></div>
 <div class="vignette"></div>
@@ -289,6 +299,7 @@ h2{font-weight:400;font-style:italic;font-size:clamp(28px,5.2vw,54px);line-heigh
   <svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>
   <svg class="off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>
 </button>
+<a id="credit" href="https://commons.wikimedia.org/wiki/File:Dubai_marina_in_night.JPG" target="_blank" rel="noopener">photo · Shahroozporia · CC BY-SA 3.0</a>
 <div id="dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
 
 <!-- 00 · boot -->
@@ -594,7 +605,6 @@ let nextShoot = 3;
 /* ================= THE REAL SKY above CONFIG.place =================
    Real star positions (catalog below), real sidereal time, real Moon position & phase. */
 const D2R = Math.PI / 180;
-const HORIZON = .86;                         // waterline, as a fraction of screen height
 const PLACE = CONFIG.place;
 const skyInfo = $('#skyinfo');
 function bvColor(bv) {
@@ -646,7 +656,7 @@ function makeView(az0, altC) {                        // stereographic camera lo
   const k = (W / 2) / (2 * Math.tan(halfFov() / 2));
   const f = altAzVec(altC, az0), r = [Math.cos(az0), -Math.sin(az0), 0];
   const u = [r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0]];
-  return { f, r, u, k, cx: W / 2, cy: H * HORIZON - k * 2 * Math.tan(altC / 2) };
+  return { f, r, u, k, cx: W / 2, cy: horizonY() - k * 2 * Math.tan(altC / 2) };
 }
 function project(alt, az) {
   const v = skyView, d = altAzVec(alt, az);
@@ -669,17 +679,27 @@ function initSkyClock() {
 const skyTime = () => skyClock.live ? Date.now() : skyClock.t0 + (Date.now() - skyClock.started);
 function chooseFraming(malt, maz, lst) {
   const portrait = H > W, def = (portrait ? 36 : 30) * D2R;
-  if (malt > 3 * D2R && malt < 62 * D2R) {
-    // Frame the Moon up and to the right, clear of the title and the two orbs: pick the
-    // azimuth for x, then tilt the camera until the Moon lands at the target height.
-    const az0 = maz - halfFov() * (portrait ? .5 : .6), target = H * (portrait ? .34 : .3);
-    let lo = def, hi = 50 * D2R;
-    for (let i = 0; i < 28; i++) {
-      const mid = (lo + hi) / 2; skyView = makeView(az0, mid);
+  if (malt > 2 * D2R && malt < 70 * D2R) {
+    // Frame the Moon in a patch of open sky in the photo (not behind a tower, not under the
+    // corner labels): try horizontal placements and heights; for each, pick the azimuth for x,
+    // then tilt the camera until the Moon lands at that height.
+    let first = null;
+    const R = Math.max(11, Math.min(W, H) * .02) * 2.2;
+    for (const f of [.55, .3, .8, .1, -.25, -.5, -.75, .95]) for (const ty of [.24, .3, .18, .36, .42]) {
+      const az0 = maz - halfFov() * f;
+      let lo = def, hi = 55 * D2R;
+      for (let i = 0; i < 26; i++) {
+        const mid = (lo + hi) / 2; skyView = makeView(az0, mid);
+        const p = project(malt, maz);
+        if (p && p[1] > H * ty) lo = mid; else hi = mid;
+      }
+      const fr = { az0, altC: (lo + hi) / 2 };
+      skyView = makeView(fr.az0, fr.altC);
       const p = project(malt, maz);
-      if (p && p[1] > target) lo = mid; else hi = mid;
+      first = first || fr;
+      if (p && p[1] > 80 && p[0] > R && p[0] < W - R && [[0, 0], [R, 0], [-R, 0], [0, R], [0, -R]].every(([a, b]) => isSky(p[0] + a, p[1] + b))) return fr;
     }
-    return { az0, altC: (lo + hi) / 2 };
+    return first;
   }
   const [oa, oz] = toAltAz(84.05 * D2R, -1.2 * D2R, lst);                   // otherwise Orion's belt
   if (oa > 8 * D2R && oa < 65 * D2R) return { az0: oz, altC: def };
@@ -744,7 +764,7 @@ function computeSky() {
     const qp = project(Math.asin(q[2] / n), Math.atan2(q[0], q[1]));
     const R = Math.max(11, Math.min(W, H) * .02);
     if (!moon || moon.R !== R || Math.abs(moon.k - k) > .003) moon = Object.assign(buildMoonSprite(R, k), { R, k });
-    Object.assign(moon, { x: mp[0], y: mp[1], vis: true, ang: qp ? Math.atan2(qp[1] - mp[1], qp[0] - mp[0]) : 0 });
+    Object.assign(moon, { x: mp[0], y: mp[1], vis: true, inSky: isSky(mp[0], mp[1]), ang: qp ? Math.atan2(qp[1] - mp[1], qp[0] - mp[0]) : 0 });
   } else if (moon) moon.vis = false;
   const d = new Date(t + PLACE.utcOffset * 3600000), hhmm = `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
   const txt = `<b>${PLACE.name}</b> · ${Math.abs(PLACE.lat).toFixed(2)}°${PLACE.lat >= 0 ? 'N' : 'S'} ${Math.abs(PLACE.lon).toFixed(2)}°${PLACE.lon >= 0 ? 'E' : 'W'}<br>${skyClock.live ? 'now' : 'tonight'} ${hhmm} ${PLACE.tzName} · moon ${Math.round(k * 100)}% ${waxing ? 'waxing' : 'waning'}`;
@@ -753,8 +773,7 @@ function computeSky() {
 function drawSky(dt, t) {
   sctx.clearRect(0, 0, W, H);
   if (!skyView || T - skyClock.lastCompute > 5) computeSky();
-  const ox = -(pointer.x - W / 2) * .008, oy = -(pointer.y - H / 2) * .008;
-  sctx.save(); sctx.translate(ox, oy);
+  sctx.save();
   sctx.strokeStyle = 'rgba(255,192,211,.09)'; sctx.lineWidth = .7;          // constellation figures, barely there
   sctx.beginPath();
   for (const seg of projLines) { sctx.moveTo(seg[0][0], seg[0][1]); for (let i = 1; i < seg.length; i++) sctx.lineTo(seg[i][0], seg[i][1]); }
@@ -796,6 +815,11 @@ function drawSky(dt, t) {
     sctx.globalAlpha = 1; sctx.strokeStyle = g; sctx.lineWidth = 1.6;
     sctx.beginPath(); sctx.moveTo(s.x, s.y); sctx.lineTo(tx, ty); sctx.stroke();
   }
+  if (skyMaskC) {                                    // keep stars, Moon & meteors in the photo's open sky only
+    sctx.globalCompositeOperation = 'destination-in'; sctx.globalAlpha = 1;
+    sctx.drawImage(skyMaskC, 0, 0, W, H);
+    sctx.globalCompositeOperation = 'lighter';
+  }
   // cursor sparkles
   for (let i = sparkles.length - 1; i >= 0; i--) {
     const p = sparkles[i];
@@ -818,177 +842,67 @@ function spawnSparkle(x, y) {
   for (let k = 0; k < 2; k++) sparkles.push({ x: x + rand(-4, 4), y: y + rand(-4, 4), vx: rand(-14, 14), vy: rand(-30, -4), life: rand(.5, 1.1), max: 1.1, s: rand(.6, 1.6), c: pick(PAL), cross: Math.random() < .25 });
 }
 
-/* ================= DUBAI MARINA SKYLINE ================= */
-const city = $('#city'), cctx = city.getContext('2d');
-let cityL = null, cityR = null, wheel = null, beacons = [], crowns = [], boats = [];
-function mulberry(a) { return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-// x: centre (fraction of width) · w: width (fraction of width) · h: height (fraction of skyline height) · t: silhouette
-const LANDMARKS = [
-  { x: .335, w: .030, h: .60, t: 'ocean' },     // Ocean Heights
-  { x: .395, w: .028, h: .70, t: 'cayan' },     // Cayan Tower, the twisted one
-  { x: .455, w: .032, h: .86, t: 'elite' },     // Elite Residence
-  { x: .52,  w: .032, h: 1.0, t: 'princess' },  // Princess Tower
-  { x: .585, w: .032, h: .92, t: 'm23' },       // 23 Marina
-  { x: .65,  w: .028, h: .80, t: 'torch' },     // The Torch
-  { x: .715, w: .034, h: .94, t: 'm101' },      // Marina 101
-  { x: .79,  w: .030, h: .64, t: 'plain' },
-  { x: .855, w: .036, h: .70, t: 'address' },   // Address Dubai Marina
-  { x: .93,  w: .030, h: .56, t: 'plain' }
-];
-function drawTower(g, tw, base, Hs, rnd, layer) {
-  const { x, w, t } = tw, h = tw.h, top = base - h, l = x - w / 2, r = x + w / 2, small = W < 640;
-  g.save();
-  g.beginPath();
-  if (t === 'princess') { g.moveTo(l, base); g.lineTo(l, top + h * .07); g.lineTo(x - w * .28, top); g.lineTo(x + w * .28, top); g.lineTo(r, top + h * .07); g.lineTo(r, base); }
-  else if (t === 'ocean') { g.moveTo(l, base); g.lineTo(l, top + h * .09); g.quadraticCurveTo(x, top + h * .06, r, top); g.lineTo(r, base); }
-  else if (t === 'address') { g.moveTo(l, base); g.lineTo(l, top + w * .5); g.quadraticCurveTo(l, top, x, top); g.quadraticCurveTo(r, top, r, top + w * .5); g.lineTo(r, base); }
-  else if (t === 'elite') { g.moveTo(l, base); g.lineTo(l, top); g.ellipse(x, top, w / 2, w * .45, 0, Math.PI, 0); g.lineTo(r, base); }
-  else g.rect(l, top, w, h);
-  g.closePath();
-  const body = g.createLinearGradient(l, 0, r, 0);
-  if (layer === 'far') { body.addColorStop(0, '#22163a'); body.addColorStop(1, '#170f2a'); }
-  else if (layer === 'near') { body.addColorStop(0, '#0b0915'); body.addColorStop(1, '#07060d'); }
-  else { body.addColorStop(0, '#2b1d42'); body.addColorStop(.35, '#110c20'); body.addColorStop(1, '#0b0917'); }
-  g.fillStyle = body; g.fill();
-  g.clip();
-  const lit = layer === 'far' ? .14 : .3, rowH = small ? 3.2 : 4.2, colW = small ? 2.6 : 3.4;
-  for (let y = top + 3; y < base - 2; y += rowH) {
-    const shift = t === 'cayan' ? ((y - top) * .4) % colW : 0;              // the twist
-    for (let xx = l + 1 + shift; xx < r - 1; xx += colW) {
-      if (rnd() > lit) continue;
-      const c = rnd(), a = layer === 'far' ? .22 + rnd() * .2 : .4 + rnd() * .55;
-      g.fillStyle = c < .6 ? `rgba(255,206,140,${a})` : c < .86 ? `rgba(255,238,210,${a})` : `rgba(170,200,255,${a})`;
-      g.fillRect(xx, y, colW * .55, rowH * .45);
-    }
-  }
-  g.fillStyle = 'rgba(255,140,170,.09)'; g.fillRect(l, top, 1, h);          // rim light from the city glow
-  g.restore();
-  if (layer !== 'mid') return;
-  g.fillStyle = '#120d22'; g.strokeStyle = '#2a1f40';
-  let tip = top;
-  if (t === 'princess') { const sh = Hs * .12; g.fillRect(x - .8, top - sh, 1.6, sh); g.beginPath(); g.arc(x, top, w * .14, Math.PI, 0); g.fill(); tip = top - sh; }
-  else if (t === 'm23') { const sh = Hs * .06; [-.36, -.12, .12, .36].forEach(o => g.fillRect(x + o * w - .6, top - sh * (Math.abs(o) < .2 ? 1 : .7), 1.2, sh * (Math.abs(o) < .2 ? 1 : .7))); crowns.push({ x, y: top - sh * .3, rx: w * .55, ry: sh * .5, c: '170,220,255' }); tip = top - sh; }
-  else if (t === 'elite') { crowns.push({ x, y: top - w * .2, rx: w * .5, ry: w * .3, c: '255,208,138' }); tip = top - w * .45; }
-  else if (t === 'torch') { const sh = Hs * .05; g.fillRect(l - w * .08, top - sh, w * 1.16, sh * .35); g.fillRect(l - w * .08, top - sh, 1, sh); g.fillRect(r + w * .08 - 1, top - sh, 1, sh); crowns.push({ x, y: top - sh * .45, rx: w * .5, ry: sh * .6, c: '255,150,90' }); tip = top - sh; }
-  else if (t === 'm101') { const sh = Hs * .085; g.lineWidth = 1; g.beginPath(); g.moveTo(l + w * .12, top); g.lineTo(x, top - sh); g.lineTo(r - w * .12, top); g.moveTo(x, top); g.lineTo(x, top - sh); g.stroke(); crowns.push({ x, y: top - sh * .35, rx: w * .4, ry: sh * .45, c: '255,192,211' }); tip = top - sh; }
-  else if (t === 'elite' || t === 'address') tip = top;
-  if (h > Hs * .55) beacons.push({ x, y: tip - 1, ph: rnd() * .4 });
+/* ================= THE PHOTO: Dubai Marina at night =================
+   "Dubai marina in night" by Shahroozporia, CC BY-SA 3.0, via Wikimedia Commons
+   (https://commons.wikimedia.org/wiki/File:Dubai_marina_in_night.JPG), colour-graded on the page.
+   SKYMASK marks which parts of the photo are open sky (192x144 grid, 1 bit per cell): the real
+   stars and Moon only show there, so they sit behind the towers like they really would. */
+const PHOTO = { src: 'marina.jpg', w: 1920, h: 1440, water: .655, py: .3,
+  beacons: [[.351, .214], [.530, .236]] };                // spire tips of the two crowned towers
+const SKYMASK = '/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////7///////////////////////////////x///////////////////////////////wf+///////////3/////////////////wP8///////////j/////////////////wP+///////////j/////////////////wH8///////////j////3////////////wDg///////////j////j///////////DwDA/////f/////A////j///////////BwCA////8P///3+A////D///////////DwAA//8/4P///x8A////A/z/////////DwAA//8f4P///w8A////Afj/////////BwAA//8H4P///w8A/v//APD/////////AwAA//8D4P///w8A/v//APD/////////AwAA//8HwP///w8A/P9/AOD/////////BwAA//8DgP///w8A/P9/AOD/////////BwAA//8BAP///wcA/P9/AOD/////////BwAA//8BAP7//wcA/P8/AOD/////////BwAA//8BAP7/fwcA/P9/AOD///8f////BwAA//8BAP7/AAAA+P8/AOD///8P/v//DwAA//8BAP5/AAAA+P8/AOD///8P/v//DwAA//8AAP4/AAAA+P8/AMD///8P/v//BwAA/z8AAP4/AAAA+P8/AID///8H+P//BwAA/wcAAP4fAAAA+P8/AID///8H8P//DwAA/wMAAP4fAAAA+P8/AID///8D4P//BwAA8gcAAP4fAAAA+P8/AID///8BwP//BwAA4A8AAPwPAAAA+P8/AID///8AwP//BwAA4B8AAP4HAAAA+P8/AID//f8AwP//BwAA4B8AAP4HAAAA+P8/AIAB+P8AwP//DwAA4A8AAP4HAAAA+P8/AIAA+P8AwP//HwAA0AEAAP4HAAAA+P8/AIAA8P8AwP//HwAAAAAAAP4DAAAA+P8/AAAA8P8AwP//HwAAAAAAAP4AAAAA+P8fAAAA8H8AgP//HwAAAAAAAH4AAAAA+P8fAAAA4H8AAP//DwAAAAAAAP4AAAAA+P8fAAAA4D8AAP8fAAAAAAAAAP4BAAAA+P8fAAAAwD8AAP8PAAAAAAAAAP4AAAAA+P8fAAAAwD8AAP8HAAAAAAAAAH4AAAAA+P8fAAAA4D8AgB8AAAAAAAAAAH4AAAAA+P8fAAAA4D8AgA8AAAAAAAAAADwAAAAA+P8fAAAAwD8AAAcAAAAAAAAAABgAAAAA+P8fAAAAgD8AAAMAAAAAAAAAAAgAAAAA+P8fAAAAgD8AAAMAAAAAAAAAAAQAAAAA+P8fAAAAgD8AAAMCAAAAAAAAAAAAAAAA+N8fAAAAAD8AAAYCAAAAAAAAAAAAAAAA+I8fAAAAAD8AAAYCAAAAAAAAAAAAAAAA+N8fAAAAAD8AAAMAAAAAAAAAAAAAAAAA+O8WAAAAADsAAAMAAAAAAAAAAAAAAAAAvEYAAAAAADEAAAAAAAAAAAAAAAAAAAAADMAEAAAAADsAAAIAAAAAAAAAAAAAAAAABAAQAAAAAD8AAAEAAAAAAAAAAAAAAAAAAAAAAAAAADEAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', MGW = 192, MGH = 144;
+const maskBits = (() => { try { const s = atob(SKYMASK), b = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) b[i] = s.charCodeAt(i); return b; } catch (_) { return null; } })();
+const photoEl = $('#photo'), city = $('#city'), cctx = city.getContext('2d');
+const photoImg = new Image(); photoImg.src = PHOTO.src;
+let pg = { s: 1, ox: 0, oy: 0 }, skyMaskC = null;
+function photoGeom() {                                     // same maths as CSS background-size: cover
+  const s = Math.max(W / PHOTO.w, H / PHOTO.h);
+  pg = { s, ox: (W - PHOTO.w * s) * .5, oy: (H - PHOTO.h * s) * PHOTO.py };
+  photoEl.style.backgroundPosition = `50% ${PHOTO.py * 100}%`;
 }
-function buildWheel(g, base, Hs, narrow) {                                     // Ain Dubai, out on Bluewaters
-  const R = Math.min(Hs * .36, W * (narrow ? .11 : .09)), cx = Math.max(R + 14, W * .12), cy = base - R - Hs * .15;
-  wheel = { cx, cy, R };
-  g.save(); g.lineCap = 'round';
-  g.fillStyle = '#0c0a16'; g.fillRect(cx - R * 1.5, base - Hs * .05, R * 3, Hs * .05);
-  g.strokeStyle = '#2c2142'; g.lineWidth = Math.max(2, R * .05);
-  g.beginPath(); g.moveTo(cx - R * .58, base - Hs * .04); g.lineTo(cx, cy); g.lineTo(cx + R * .58, base - Hs * .04); g.stroke();
-  g.lineWidth = .5; g.strokeStyle = 'rgba(130,110,170,.35)'; g.beginPath();
-  for (let i = 0; i < 32; i++) { const a = i / 32 * TAU; g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R); }
-  g.stroke();
-  g.strokeStyle = '#3a2c55'; g.lineWidth = Math.max(1.5, R * .03); g.beginPath(); g.arc(cx, cy, R, 0, TAU); g.stroke();
-  g.lineWidth = .8; g.beginPath(); g.arc(cx, cy, R * .93, 0, TAU); g.stroke();
-  g.fillStyle = '#3a2c55'; g.beginPath(); g.arc(cx, cy, Math.max(2, R * .07), 0, TAU); g.fill();
-  g.restore();
-  beacons.push({ x: cx, y: cy - R - 2, ph: .2 });
+const horizonY = () => pg.oy + PHOTO.water * PHOTO.h * pg.s;
+function isSky(x, y) {
+  if (!maskBits) return y < horizonY() * .45;
+  const gx = Math.floor((x - pg.ox) / pg.s / PHOTO.w * MGW), gy = Math.floor((y - pg.oy) / pg.s / PHOTO.h * MGH);
+  if (gx < 0 || gx >= MGW || gy >= MGH) return false;
+  if (gy < 0) return true;
+  const i = gy * MGW + gx;
+  return !!(maskBits[i >> 3] & (1 << (i & 7)));
 }
-function buildCity() {
-  const base = Math.round(H * HORIZON), Hs = H * (H > W ? .24 : .27), narrow = W < 640, rnd = mulberry(7);
-  const mk = (w, h) => { const c = document.createElement('canvas'); c.width = Math.ceil(w * DPR); c.height = Math.max(1, Math.ceil(h * DPR)); const g = c.getContext('2d'); g.scale(DPR, DPR); return [c, g]; };
-  const [L, g] = mk(W, base);
-  beacons = []; crowns = [];
-  for (let x = W * .22; x < W + 20;) {                                         // hazy towers further back
-    const w = (narrow ? 9 : 16) + rnd() * (narrow ? 12 : 30), h = Hs * (.16 + rnd() * .34);
-    drawTower(g, { x: x + w / 2, w, h, t: 'plain' }, base, Hs, rnd, 'far');
-    x += w * (.7 + rnd() * .6);
-  }
-  for (const lm of LANDMARKS) drawTower(g, { x: lm.x * W, w: Math.max(narrow ? 11 : 0, lm.w * W * (narrow ? 1.3 : 1)), h: lm.h * Hs, t: lm.t }, base, Hs, rnd, 'mid');
-  for (let x = W * .2; x < W + 20;) {                                          // low podiums along the water
-    const w = 18 + rnd() * 46, h = Hs * (.04 + rnd() * .09);
-    drawTower(g, { x: x + w / 2, w, h, t: 'plain' }, base, Hs, rnd, 'near');
-    x += w + rnd() * 8;
-  }
-  buildWheel(g, base, Hs, narrow);
-  cityL = L;
-  const rh = H - base, [Rc, rg] = mk(W, rh);                                  // mirrored skyline for the water
-  rg.save(); rg.scale(1, -1); rg.drawImage(L, 0, -base, W, base); rg.restore();
-  rg.globalCompositeOperation = 'destination-in';
-  const fade = rg.createLinearGradient(0, 0, 0, rh); fade.addColorStop(0, 'rgba(0,0,0,.55)'); fade.addColorStop(1, 'rgba(0,0,0,0)');
-  rg.fillStyle = fade; rg.fillRect(0, 0, W, rh);
-  cityR = Rc;
-  const s = narrow ? .7 : 1;
-  boats = [{ x: rnd() * W, y: base + rh * .3, v: 7 + rnd() * 5, s }, { x: rnd() * W, y: base + rh * .62, v: -(5 + rnd() * 4), s: s * 1.15 }];
+function buildPhoto() {
+  photoGeom();
+  if (!maskBits) { skyMaskC = null; return; }
+  const small = document.createElement('canvas'); small.width = MGW; small.height = MGH;
+  const sg = small.getContext('2d'), id = sg.createImageData(MGW, MGH);
+  for (let i = 0; i < MGW * MGH; i++) id.data[i * 4 + 3] = maskBits[i >> 3] & (1 << (i & 7)) ? 255 : 0;
+  sg.putImageData(id, 0, 0);
+  skyMaskC = document.createElement('canvas'); skyMaskC.width = Math.round(W * DPR); skyMaskC.height = Math.round(H * DPR);
+  const mg = skyMaskC.getContext('2d'); mg.scale(DPR, DPR); mg.imageSmoothingEnabled = true;
+  mg.drawImage(small, pg.ox, pg.oy, PHOTO.w * pg.s, PHOTO.h * pg.s);
 }
-function drawBoat(b) {
-  const { x, y, s } = b, L = 30 * s;
-  cctx.fillStyle = '#06050b';
-  cctx.beginPath(); cctx.moveTo(x - L / 2, y - 3 * s); cctx.lineTo(x + L / 2, y - 3 * s); cctx.lineTo(x + L * .4, y); cctx.lineTo(x - L * .42, y); cctx.closePath(); cctx.fill();
-  cctx.fillRect(x - L * .2, y - 6 * s, L * .36, 3 * s);
-  cctx.fillStyle = 'rgba(255,232,195,.95)';
-  for (let i = 0; i < 4; i++) cctx.fillRect(x - L * .16 + i * L * .09, y - 5.2 * s, 1.2, 1.2);
-  cctx.fillRect(x - L * .3, y - 2.2 * s, L * .6, .7);
-  cctx.fillStyle = 'rgba(255,232,195,.22)';
-  cctx.fillRect(x - L * .2 + Math.sin(T * 3 + x) * 1.5, y + 2, L * .4, 1);
-  cctx.fillRect(x - L * .12 + Math.sin(T * 2.4 + x) * 2, y + 5, L * .24, 1);
-}
-const WHEEL_COLS = ['255,92,138', '255,192,211', '255,208,138', '190,150,255'];
-function drawCity(dt, t) {
+function drawCity(dt, t) {                                 // the water gently moves; the photo becomes a cinemagraph
   cctx.clearRect(0, 0, W, H);
-  if (!cityL) return;
-  const base = Math.round(H * HORIZON), rh = H - base, ox = -(pointer.x - W / 2) * .014;
-  const water = cctx.createLinearGradient(0, base, 0, H);
-  water.addColorStop(0, '#1e0f2a'); water.addColorStop(1, '#07050c');
-  cctx.fillStyle = water; cctx.fillRect(0, base, W, rh);
-  cctx.save(); cctx.translate(ox, 0);
-  for (let y = 0; y < rh; y += 2) {                                            // rippled reflection
-    const dx = Math.sin(y * .35 + t * 1.6) * (1 + y * .04) + Math.sin(y * .11 - t * .9) * 1.5;
-    cctx.drawImage(cityR, 0, y * DPR, cityR.width, 2 * DPR, dx, base + y, W, 2);
+  if (!photoImg.complete || !photoImg.naturalWidth) return;
+  const k = photoImg.naturalWidth / PHOTO.w, y0 = Math.ceil(horizonY() + 8 * pg.s);
+  if (!reduceMotion) for (let y = y0; y < H; y += 2) {
+    const u = (y - y0) / Math.max(1, H - y0);
+    const dx = Math.sin(y * .09 + t * 1.4) * (.5 + u * 3) + Math.sin(y * .031 - t * .7) * u * 2.4;
+    cctx.drawImage(photoImg, 0, (y - pg.oy) / pg.s * k, photoImg.naturalWidth, 2 / pg.s * k, pg.ox + dx, y, PHOTO.w * pg.s, 2);
   }
-  if (moon && moon.vis && moon.y < base) {                                     // moonlight path on the water
-    for (let y = base + 2; y < H; y += 3) {
-      const u = (y - base) / rh, w = (3 + u * 30) * (.35 + .65 * Math.abs(Math.sin(y * .7 + t * 2)));
-      cctx.fillStyle = `rgba(255,236,214,${(.08 + .3 * moon.k) * (1 - u)})`;
-      cctx.fillRect(moon.x - ox * .4 - w / 2 + Math.sin(y * .3 + t) * 2, y, w, 1);
-    }
-  }
-  if (wheel) {                                                                 // wheel's coloured glow on the water
-    for (let y = base + 2; y < H; y += 3) {
-      const u = (y - base) / rh, c = WHEEL_COLS[Math.floor((t * .5 + y * .01) % 4)];
-      cctx.fillStyle = `rgba(${c},${.12 * (1 - u)})`;
-      cctx.fillRect(wheel.cx - wheel.R * .5 + Math.sin(y * .4 + t * 1.8) * 3, y, wheel.R, 1);
-    }
-  }
-  cctx.fillStyle = 'rgba(255,150,120,.22)'; cctx.fillRect(-20, base - 2, W + 40, 2);   // promenade
-  cctx.fillStyle = 'rgba(255,205,150,.85)';
-  for (let x = -16; x < W + 20; x += 7) cctx.fillRect(x, base - 1.6, 1.2, 1.2);
-  for (const b of boats) {
-    b.x += b.v * dt;
-    if (b.x > W + 60) b.x = -60; else if (b.x < -60) b.x = W + 60;
-    drawBoat(b);
-  }
-  cctx.drawImage(cityL, 0, 0, W, base);
   cctx.globalCompositeOperation = 'lighter';
-  for (const c of crowns) {                                                    // lit crowns on the towers
-    const g = cctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, c.rx * 1.5);
-    g.addColorStop(0, `rgba(${c.c},${.42 + .1 * Math.sin(t * 1.3 + c.x)})`); g.addColorStop(1, `rgba(${c.c},0)`);
-    cctx.fillStyle = g; cctx.beginPath(); cctx.ellipse(c.x, c.y, c.rx * 1.5, c.ry * 1.5, 0, 0, TAU); cctx.fill();
-  }
-  if (wheel) {                                                                 // Ain Dubai lights, slowly chasing
-    const { cx, cy, R } = wheel;
-    cctx.strokeStyle = 'rgba(255,92,138,.16)'; cctx.lineWidth = 4;
-    cctx.beginPath(); cctx.arc(cx, cy, R, 0, TAU); cctx.stroke();
-    for (let i = 0; i < 48; i++) {
-      const a = i / 48 * TAU + t * .015, ci = Math.floor(((i / 48 + t * .08) % 1) * 4);
-      cctx.fillStyle = `rgba(${WHEEL_COLS[ci]},.95)`;
-      cctx.beginPath(); cctx.arc(cx + Math.cos(a) * R, cy + Math.sin(a) * R, Math.max(1.1, R * .022), 0, TAU); cctx.fill();
+  if (moon && moon.vis && moon.inSky) {                    // moonlight path on the water
+    for (let y = y0; y < H; y += 3) {
+      const u = (y - y0) / Math.max(1, H - y0), w = (3 + u * 34) * (.35 + .65 * Math.abs(Math.sin(y * .7 + t * 2)));
+      cctx.fillStyle = `rgba(255,236,214,${(.05 + .16 * moon.k) * (1 - u * .8)})`;
+      cctx.fillRect(moon.x - w / 2 + Math.sin(y * .3 + t) * 2, y, w, 1);
     }
   }
-  for (const b of beacons) {                                                   // red aviation lights
-    const on = ((t + b.ph) % 1.5) < .5 ? 1 : 0.12;
-    const g = cctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, 7);
-    g.addColorStop(0, `rgba(255,40,50,${.9 * on})`); g.addColorStop(.3, `rgba(255,40,50,${.35 * on})`); g.addColorStop(1, 'rgba(255,40,50,0)');
-    cctx.fillStyle = g; cctx.beginPath(); cctx.arc(b.x, b.y, 7, 0, TAU); cctx.fill();
+  for (const [bx, by] of PHOTO.beacons) {                  // red aviation lights, blinking
+    const x = pg.ox + bx * PHOTO.w * pg.s, y = pg.oy + by * PHOTO.h * pg.s, on = ((t + bx) % 1.5) < .5 ? 1 : .1;
+    const g = cctx.createRadialGradient(x, y, 0, x, y, 8);
+    g.addColorStop(0, `rgba(255,40,50,${.95 * on})`); g.addColorStop(.3, `rgba(255,40,50,${.35 * on})`); g.addColorStop(1, 'rgba(255,40,50,0)');
+    cctx.fillStyle = g; cctx.beginPath(); cctx.arc(x, y, 8, 0, TAU); cctx.fill();
   }
   cctx.globalCompositeOperation = 'source-over';
-  cctx.restore();
 }
 
 /* generic fx particles */
@@ -1265,6 +1179,7 @@ async function buildName(fromCenter) {
   if (mw > W * .86) { fs *= (W * .86) / mw; c.font = `italic 600 ${fs}px "Cormorant Garamond", Georgia, serif`; }
   c.fillStyle = '#fff'; c.textAlign = 'center'; c.textBaseline = 'middle';
   c.fillText(NAME, W / 2, H * .44);
+  nameS.halo = Math.min(W, c.measureText(NAME).width) * .8;
   const data = c.getImageData(0, 0, W, H).data;
   let gap = Math.max(3, Math.round(fs / 42)), pts;
   const maxN = isSmall() ? 1500 : 2600;
@@ -1301,6 +1216,12 @@ function drawName(dt, t) {
   const f = Math.min(3, dt * 60), R = isSmall() ? 70 : 105, R2 = R * R;
   const age = t - nameS.t0;
   const damp = Math.pow(.86, f), freeDamp = Math.pow(.965, f);
+  if (nameS.halo) {                                  // soft dark halo so the name reads over the lit towers
+    fctx.save(); fctx.translate(W / 2, H * .44); fctx.scale(1, .5);
+    const g = fctx.createRadialGradient(0, 0, 0, 0, 0, nameS.halo);
+    g.addColorStop(0, `rgba(8,5,18,${.82 * Math.min(1, age)})`); g.addColorStop(.6, `rgba(8,5,18,${.55 * Math.min(1, age)})`); g.addColorStop(1, 'rgba(8,5,18,0)');
+    fctx.fillStyle = g; fctx.beginPath(); fctx.arc(0, 0, nameS.halo, 0, TAU); fctx.fill(); fctx.restore();
+  }
   fctx.save();
   fctx.globalCompositeOperation = 'lighter';
   let lastC = '';
@@ -1640,9 +1561,9 @@ function resize() {
   sctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   cctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   fctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  buildPhoto();
   moon = null;
   computeSky();
-  buildCity();
   const sc = scenes[current]; sc && sc.resize && sc.resize();
 }
 let rzT = 0;
